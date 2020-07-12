@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 from .coder import encode
 from .anchor import get_anchor_box
+
 class Datagen(object):
     def __init__(self, root, list_file, img_scale_size, train=True, transform=None):
         '''
@@ -25,6 +26,11 @@ class Datagen(object):
 
     def set_batch(self, batch_size):
         self.batch_dataset = self.dataset.batch(batch_size=batch_size)
+        self.dataset_list = list(self.batch_dataset.as_numpy_iterator())
+
+    def shuffle(self):
+        count = len(list(self.batch_dataset.as_numpy_iterator()))
+        self.batch_dataset = self.batch_dataset.shuffle(count)
         self.dataset_list = list(self.batch_dataset.as_numpy_iterator())
 
     def get_count(self):
