@@ -2,6 +2,7 @@ import tensorflow as tf
 import os
 import numpy as np
 import cv2
+import random
 from .coder import encode
 from .anchor import get_anchor_box
 
@@ -33,6 +34,18 @@ class Datagen(object):
         self.batch_dataset = self.batch_dataset.shuffle(count)
         self.dataset_list = list(self.batch_dataset.as_numpy_iterator())
 
+    def random_flip(self, img, boxes):
+        if random.random() < 0.5:
+            img = cv2.flip(img, 1)
+            w = img.shape[1]
+            xmin = w - boxes[:,2]
+            xmax = w - boxes[:,0]
+            boxes[:,0] = xmin
+            boxes[:,2] = xmax
+        return img, boxes
+    
+
+
     def get_count(self):
         return len(self.dataset_list)
 
@@ -60,11 +73,13 @@ class Datagen(object):
             boxes = np.array(box)
             label = np.array(label)
             img = cv2.imread(os.path.join(self.root, img_path))
+            w,h = img.shape[1], img.shape[0]
+
+            if self.train:
+                img, boxes = self.random_flip(img, boxes)
 
             # Scale bbox locaitons to [0,1].
-            w,h = img.shape[1], img.shape[0]
             boxes /= np.array([w, h, w, h])
-
             img = cv2.resize(img, (self.img_scale_size, self.img_scale_size))
             img = img.astype(np.float32)
 
