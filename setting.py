@@ -2,10 +2,7 @@ image_shape = (300, 300, 3)
 
 # train
 num_epochs = 40000
-batch_size = 16
-learning_rate =0.0001
-decay_steps= 20000
-decay_rate = 0.9
+learning_rate =0.00001
 
 
 # model save path(use savedmodel)
