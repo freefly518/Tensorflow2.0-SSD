@@ -16,7 +16,7 @@ if gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 
 
-def train_one_step(batch_img, gt_conf, gt_loc):
+def train_one_step(batch_img, gt_loc, gt_conf):
     with tf.GradientTape() as tape:
         confs, locs = net(batch_img)
         conf_loss, loc_loss = criterion(locs, gt_loc, confs, gt_conf)
@@ -43,35 +43,43 @@ if __name__ == "__main__":
         pretrain_net = tf.keras.models.load_model(model_path)
         net = SSD(num_classes=classes_number,
                     anchor_num=anchor_number,
-                    input_shape=image_shape,
-                    batch_size=batch_size)
+                    input_shape=image_shape)
         net.set_weights(pretrain_net.get_weights())
     else:
         net = SSD(num_classes=classes_number,
                     anchor_num=anchor_number,
-                    input_shape=image_shape,
-                    batch_size=batch_size)
+                    input_shape=image_shape)
 
     net.set_batch_size(batch_size)
 
     criterion = BoxLoss()
     # optimizer
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=learning_rate,
-                                                                 decay_steps=decay_steps,
-                                                                 decay_rate=decay_rate)
-    optimizer = tf.keras.optimizers.Adam(
-        learning_rate=lr_schedule)
 
-    count = 0
+    optimizer = tf.keras.optimizers.SGD(
+        learning_rate=learning_rate,
+        momentum=0.9)
+
+    epoc_count = 0
     for epoch in range(num_epochs):
+    count = 0
+        train_loss = 0
+        avg_conf_loss = 0
+        avg_loc_loss = 0
+        avg_loss = 0
         for i in range(dataset_count):
-            batch_img, gt_conf, gt_loc = dataset.get_train_data(i)
+            batch_img, gt_loc, gt_conf = dataset.get_train_data(i)
+            print(gt_loc.shape, gt_conf.shape)
             loss, conf_loss, loc_loss = train_one_step(batch_img, gt_loc, gt_conf)
 
-            if count % 10 == 0:
-                print('Epoch: {}({}/{}) Batch {} | Loss: {:.4f} Conf: {:.4f} Loc: {:.4f}'.format(
-                    epoch + 1, count, dataset_count, batch_size, loss.numpy(), conf_loss.numpy(), loc_loss.numpy()))
+            train_loss += loss.numpy()
+            avg_conf_loss += conf_loss.numpy()
+            avg_loc_loss += loc_loss.numpy()
+            avg_loss += loss.numpy()
+            print('Epoch: {}({}/{}) Batch {} | Loss: {:.4f} Conf: {:.4f} Loc: {:.4f} | Train Loss {:.4f}'.format(
+                epoch + 1, count, dataset_count, batch_size, avg_loss/(count + 1), avg_conf_loss/(count + 1), avg_loc_loss/(count + 1), conf_loss.numpy()))
 
             count += 1
             if count % 200 == 0:
                 net.save(model_path, save_format='tf')
+        dataset.shuffle()
+        net.save(model_path, save_format='tf')
