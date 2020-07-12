@@ -2,7 +2,7 @@ import math
 import numpy as np
 import itertools
 from .anchor import get_anchor_box
-from .utils import iou
+from .utils import iou, nms
 
 def encode(boxes, classes, default_boxes, threshold=0.5):
     '''Transform target bounding boxes and class labels to SSD boxes and classes.
@@ -13,6 +13,7 @@ def encode(boxes, classes, default_boxes, threshold=0.5):
         #obj: image has #obj number of object
         boxes: (np.ndarray) object bounding boxes (xmin,ymin,xmax,ymax) of a image, sized [#obj, 4].
         classes: (np.ndarray) object class labels of a image, sized [#obj,].
+        default_boxes (np.ndarray) default anchor box [anchor_num, 4]
         threshold: (float) Jaccard index threshold
       Returns:
         boxes: (np.ndarray) bounding boxes, sized [anchor_num, 4].
@@ -44,11 +45,14 @@ def encode(boxes, classes, default_boxes, threshold=0.5):
     return loc, conf
 
 
-def decode(loc, conf, default_boxes, num_classes=21, threshold=0.5):
+def decode(loc, conf, default_boxes, img_w, img_h, num_classes=21, threshold=0.5):
     '''Transform predicted loc/conf back to real bbox locations and class labels.
       Args:
-        loc: (ndarray) predicted loc, sized [anchor_num,4].
-        conf: (ndarray) predicted conf, sized [anchor_num,21].
+        loc: (np.ndarray) predicted loc, sized [anchor_num,4].
+        conf: (np.ndarray) predicted conf, sized [anchor_num,21].
+        default_boxes: (np.ndarray) default anchor box [anchor_num, 4]
+        img_w: (int) original image width
+        img_h: (int) original image height
         threshold: (float) threshold for object score
       Returns:
         boxes: (ndarray) bbox locations, sized [#obj, 4].
@@ -59,9 +63,9 @@ def decode(loc, conf, default_boxes, num_classes=21, threshold=0.5):
     cxcy = loc[:,:2] * variances[0] * default_boxes[:,2:] + default_boxes[:,:2]
     box_preds = np.concatenate([cxcy-wh/2, cxcy+wh/2], 1)  # [anchor_num,4]
 
-    boxes = []
-    labels = []
-    scores = []
+    boxes = list()
+    labels = list()
+    scores = list()
     num_classes = num_classes
     for i in range(num_classes-1):
         if i == 0:
@@ -69,18 +73,21 @@ def decode(loc, conf, default_boxes, num_classes=21, threshold=0.5):
             continue
         score = conf[:,i]  # class i corresponds to (i+1) column
         mask = score > threshold
-
-        if not mask.any():
-            continue
-
+        
         # get score
         box = box_preds[mask]
+        box[:, 0] *= img_w
+        box[:, 1] *= img_h
+        box[:, 2] *= img_w
+        box[:, 3] *= img_h
         score = score[mask]
-
-        boxes.append(box)
-        labels.append(i)
-        scores.append(score)
-
+        if len(box) == 0:
+            continue
+        keep = nms(box, score)
+        for j in keep:
+            boxes.append(box[j])
+            labels.append(i)
+            scores.append(score[j])
     return boxes, labels, scores
 
 
