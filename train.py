@@ -68,7 +68,6 @@ if __name__ == "__main__":
         avg_loss = 0
         for i in range(dataset_count):
             batch_img, gt_loc, gt_conf = dataset.get_train_data(i)
-            print(gt_loc.shape, gt_conf.shape)
             loss, conf_loss, loc_loss = train_one_step(batch_img, gt_loc, gt_conf)
 
             train_loss += loss.numpy()

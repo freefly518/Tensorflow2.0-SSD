@@ -71,10 +71,6 @@ class BoxLoss(object):
         conf_loss = cross_entropy(
           conf_targets[mask], conf_preds[mask]
         )
-        # print("="*10)
-        # print(softmax(conf_preds[pos_mask][0]), conf_preds[pos_mask][0])
-        # print(conf_targets[pos_mask][:3], conf_loss)
-        # print("="*10)
         smooth_l1_loss = SmoothL1Loss()
         loc_loss = smooth_l1_loss(
             loc_targets[pos_mask],
