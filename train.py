@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     epoc_count = 0
     for epoch in range(num_epochs):
-    count = 0
+        count = 0
         train_loss = 0
         avg_conf_loss = 0
         avg_loc_loss = 0

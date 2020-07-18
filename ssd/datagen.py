@@ -5,6 +5,7 @@ import cv2
 import random
 from .coder import encode
 from .anchor import get_anchor_box
+from .utils import iou
 
 class Datagen(object):
     def __init__(self, root, list_file, img_scale_size, train=True, transform=None):
@@ -43,8 +44,49 @@ class Datagen(object):
             boxes[:,0] = xmin
             boxes[:,2] = xmax
         return img, boxes
-    
 
+    def random_crop(self, img, boxes, labels):
+        img_w, img_h = img.shape[1], img.shape[0]
+
+        while True:
+            min_iou = random.choice([None, 0.1, 0.3, 0.5, 0.7, 0.9])# random choice the one
+            if min_iou is None:
+                return img, boxes, labels
+
+            for _ in range(100):
+                w = random.randrange(int(0.1*img_w), img_w)
+                h = random.randrange(int(0.1*img_h), img_h)
+
+                if h > 2*w or w > 2*h or h < 1 or w < 1:
+                    continue
+
+                x = random.randrange(img_w - w)
+                y = random.randrange(img_h - h)
+                new_region = np.array([x, y, x+w, y+h])
+
+                box_center = (boxes[:,:2] + boxes[:,2:]) / 2  # [N,2]
+                new_regions = np.broadcast_to(new_region, (len(box_center),4))  # [N,4]
+
+                mask = (box_center > new_regions[:,:2]) & (box_center < new_regions[:,2:])  # [N,2]
+                mask = mask[:,0] & mask[:,1]  #[N,]
+
+                if not mask.any():
+                    continue
+
+                selected_boxes = boxes[mask]
+
+                box_iou = iou(selected_boxes, new_regions)
+
+                if box_iou.min() < min_iou:
+                    continue
+                img = img[y:y+h, x:x+w, :]
+
+                selected_boxes[:,0] = np.clip(selected_boxes[:,0] - x, 0, w)
+                selected_boxes[:,1] = np.clip(selected_boxes[:,1] - y, 0, h)
+                selected_boxes[:,2] = np.clip(selected_boxes[:,2] - x, 0, w)
+                selected_boxes[:,3] = np.clip(selected_boxes[:,3] - y, 0, h)
+
+                return img, selected_boxes, labels[mask]
 
     def get_count(self):
         return len(self.dataset_list)
@@ -77,6 +119,7 @@ class Datagen(object):
 
             if self.train:
                 img, boxes = self.random_flip(img, boxes)
+                img, boxes, label = self.random_crop(img, boxes, label)
 
             # Scale bbox locaitons to [0,1].
             boxes /= np.array([w, h, w, h])

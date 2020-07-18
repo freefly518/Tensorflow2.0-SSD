@@ -84,11 +84,11 @@ def nms(bboxes, scores, threshold=0.3):
         h = np.maximum((yy2-yy1), 0)
         inter = w*h
         ovr = inter / (areas[i] + areas[order[1:]] - inter)
-     
+
 
         ids = (ovr<=threshold)
         if len(ids) == 0:
             break
-        order = order[1:] 
+        order = order[1:]
         order = order[ids]
     return keep
