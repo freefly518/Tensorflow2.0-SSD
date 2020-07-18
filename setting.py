@@ -3,7 +3,7 @@ image_shape = (300, 300, 3)
 # train
 num_epochs = 40000
 learning_rate =0.00001
-
+batch_size = 4
 
 # model save path(use savedmodel)
 model_path = "models/ssd"
