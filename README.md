@@ -40,6 +40,24 @@ python gen_voc_list.py
 
 then get one voc_list.txt
 
+## Download pretrain model
+
+https://drive.google.com/drive/folders/1yAzdejcufFZxxvthzfwJji4p9BwU1dGN?usp=sharing
+put it to 
+```
+models/ssd
+```
+
+folder tree
+
+```
+models/
+├── ssd
+│   ├── assets
+│   ├── saved_model.pb
+│   └── variables
+```
+
 ## Train
 recommand use pretrain model
 
